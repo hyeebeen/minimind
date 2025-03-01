@@ -96,12 +96,19 @@ def process_assistant_content(content):
 
 @st.cache_resource
 def load_model_tokenizer(model_path):
+    import os
+    # 获取当前脚本所在目录的上级目录作为基准路径
+    base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    # 将相对路径转换为绝对路径
+    abs_model_path = os.path.join(base_path, model_path.lstrip('./'))
+    
     model = AutoModelForCausalLM.from_pretrained(
-        model_path,
-        trust_remote_code=True
+        abs_model_path,
+        trust_remote_code=True,
+        device_map='auto'
     )
     tokenizer = AutoTokenizer.from_pretrained(
-        model_path,
+        abs_model_path,
         use_fast=False,
         trust_remote_code=True
     )
@@ -166,14 +173,14 @@ st.session_state.temperature = st.sidebar.slider("Temperature", 0.6, 1.2, 0.85, 
 
 # 模型路径映射
 MODEL_PATHS = {
-    "MiniMind2-R1 (0.1B)": ["../MiniMind2-R1", "MiniMind2-R1"],
-    "MiniMind2-Small-R1 (0.02B)": ["../MiniMind2-Small-R1", "MiniMind2-Small-R1"],
-    "MiniMind2 (0.1B)": ["../MiniMind2", "MiniMind2"],
-    "MiniMind2-MoE (0.15B)": ["../MiniMind2-MoE", "MiniMind2-MoE"],
-    "MiniMind2-Small (0.02B)": ["../MiniMind2-Small", "MiniMind2-Small"],
-    "MiniMind-V1 (0.1B)": ["../minimind-v1", "MiniMind-V1"],
-    "MiniMind-V1-MoE (0.1B)": ["../minimind-v1-moe", "MiniMind-V1-MoE"],
-    "MiniMind-V1-Small (0.02B)": ["../minimind-v1-small", "MiniMind-V1-Small"],
+    "MiniMind2-R1 (0.1B)": ["./MiniMind2-R1", "MiniMind2-R1"],
+    "MiniMind2-Small-R1 (0.02B)": ["./MiniMind2-Small-R1", "MiniMind2-Small-R1"],
+    "MiniMind2 (0.1B)": ["./MiniMind2", "MiniMind2"],
+    "MiniMind2-MoE (0.15B)": ["./MiniMind2-MoE", "MiniMind2-MoE"],
+    "MiniMind2-Small (0.02B)": ["./MiniMind2-Small", "MiniMind2-Small"],
+    "MiniMind-V1 (0.1B)": ["./minimind-v1", "MiniMind-V1"],
+    "MiniMind-V1-MoE (0.1B)": ["./minimind-v1-moe", "MiniMind-V1-MoE"],
+    "MiniMind-V1-Small (0.02B)": ["./minimind-v1-small", "MiniMind-V1-Small"],
 }
 
 selected_model = st.sidebar.selectbox('Models', list(MODEL_PATHS.keys()), index=2)  # 默认选择 MiniMind2

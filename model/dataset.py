@@ -74,15 +74,14 @@ class SFTDataset(Dataset):
 
     def _create_chat_prompt(self, conversations):
         """构建符合ChatML格式的对话"""
-        messages = []
+        prompt = ""
         for i, turn in enumerate(conversations):
             role = 'user' if i % 2 == 0 else 'assistant'
-            messages.append({"role": role, "content": turn['content']})
-        return self.tokenizer.apply_chat_template(
-            messages,
-            tokenize=False,
-            add_generation_prompt=False
-        )
+            if role == 'user':
+                prompt += f"<s>user\n{turn['content']}</s>\n"
+            else:
+                prompt += f"<s>assistant\n{turn['content']}</s>\n"
+        return prompt
 
     def _generate_loss_mask(self, input_ids):
         loss_mask = [0] * len(input_ids)
