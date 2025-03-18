@@ -232,6 +232,7 @@
        - 提供高效的序列并行和模型并行实现
 
     **xFormers架构图**：
+    
     ```
     ┌───────────────────────────────────────────────────────────┐
     │                  用户接口层 (Factory API)                 │
@@ -382,3 +383,69 @@
 - Web 服务部署工具
 
 在使用这些库时，建议注意版本兼容性，并根据实际需求选择合适的组件。
+
+sequenceDiagram
+    participant 脚本 as 主训练脚本
+    participant 配置 as 参数配置
+    participant 数据 as 数据加载器
+    participant 模型 as MiniMindLM
+    participant 优化器 as AdamW优化器
+    participant DDP as 分布式训练
+    participant AMP as 混合精度训练
+    participant 日志 as 日志和保存
+
+    脚本->>配置: 1. 解析命令行参数
+    配置->>配置: 2. 创建LMConfig配置
+    
+    alt 启用分布式训练
+        脚本->>DDP: 3a. 初始化分布式环境
+        DDP-->>脚本: 返回本地进程排名
+    end
+    
+    脚本->>模型: 4. 初始化MiniMindLM模型
+    脚本->>数据: 5. 创建PretrainDataset
+    脚本->>数据: 6. 创建DataLoader
+    
+    脚本->>优化器: 7. 初始化AdamW优化器
+    脚本->>AMP: 8. 初始化GradScaler
+    
+    alt 分布式训练
+        脚本->>DDP: 9. 封装为DistributedDataParallel模型
+    end
+    
+    rect rgb(240, 240, 255)
+    Note over 脚本,日志: 训练循环(每个epoch)
+    
+    loop 每个epoch
+        数据->>脚本: 10. 获取批次数据(X, Y, loss_mask)
+        脚本->>优化器: 11. 更新学习率(余弦退火)
+        
+        AMP->>模型: 12. 在混合精度上下文中执行前向传播
+        模型-->>AMP: 返回logits输出
+        
+        脚本->>脚本: 13. 计算带掩码的交叉熵损失
+        脚本->>脚本: 14. 添加辅助损失(MOE损失)
+        脚本->>脚本: 15. 损失除以累积步数
+        
+        脚本->>AMP: 16. 缩放损失并反向传播
+        
+        alt 达到梯度累积步数
+            AMP->>优化器: 17a. 反缩放梯度
+            脚本->>脚本: 17b. 梯度裁剪
+            AMP->>优化器: 17c. 更新参数
+            AMP->>AMP: 17d. 更新缩放因子
+            优化器->>模型: 17e. 清零梯度
+        end
+        
+        alt 达到日志间隔
+            脚本->>日志: 18a. 打印训练信息
+            alt 启用wandb
+                脚本->>日志: 18b. 记录wandb指标
+            end
+        end
+        
+        alt 达到保存间隔 
+            模型->>日志: 19. 保存模型权重
+        end
+    end
+    end
